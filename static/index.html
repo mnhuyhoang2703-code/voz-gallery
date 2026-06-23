@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>VOZ Gallery + Swipe</title>
+<style>
+  :root{
+    --bg:#0f1419; --panel:#182029; --panel2:#1f2934; --line:#2b3743;
+    --txt:#e6edf3; --muted:#8b98a5; --accent:#3ea6ff; --accent2:#2b8ce6;
+    --like:#21c87a; --nope:#ff5470;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);
+    font-family:'Segoe UI',system-ui,Roboto,Arial,sans-serif;overflow-x:hidden}
+  header{position:sticky;top:0;z-index:30;background:rgba(15,20,25,.94);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:12px 16px;}
+  h1{font-size:17px;margin:0 0 10px;font-weight:600}
+  h1 span{color:var(--accent)}
+  .controls{display:flex;flex-wrap:wrap;gap:9px;align-items:flex-end}
+  .row2{display:flex;flex-wrap:wrap;gap:9px;align-items:flex-end;margin-top:9px}
+  .field{display:flex;flex-direction:column;gap:4px}
+  .field label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  input,select{background:var(--panel2);border:1px solid var(--line);color:var(--txt);
+    padding:9px 11px;border-radius:8px;font-size:14px;outline:none}
+  input:focus,select:focus{border-color:var(--accent)}
+  #url{min-width:300px;flex:1}
+  #saved{min-width:260px;flex:1}
+  input[type=number]{width:84px}
+  button{background:var(--accent);color:#04111f;border:none;padding:10px 16px;
+    border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;transition:.15s}
+  button:hover{filter:brightness(1.08)}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  button.ghost{background:var(--panel2);color:var(--txt);border:1px solid var(--line)}
+  .hint{font-size:12px;color:var(--muted);margin-top:8px}
+  .status{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:9px;
+    font-size:13px;color:var(--muted);min-height:16px}
+  .bar{flex:1;min-width:140px;height:6px;background:var(--panel2);border-radius:4px;overflow:hidden}
+  .bar > i{display:block;height:100%;width:0;background:var(--accent);transition:width .3s}
+  .pill{background:var(--panel2);padding:3px 10px;border-radius:20px;color:var(--txt)}
+  .err{color:#ff6b6b}
+  .tabs{display:flex;gap:8px;margin-top:11px}
+  .tab{background:var(--panel2);border:1px solid var(--line);padding:7px 16px;border-radius:20px;
+    cursor:pointer;font-size:13px;font-weight:600;color:var(--muted)}
+  .tab.on{background:var(--accent);color:#04111f;border-color:var(--accent)}
+
+  main{padding:16px}
+  .view{display:none}.view.on{display:block}
+
+  #gallery{column-gap:12px;column-width:220px}
+  .card{break-inside:avoid;margin-bottom:12px;position:relative;border-radius:10px;
+    overflow:hidden;background:var(--panel);border:1px solid var(--line);cursor:zoom-in;
+    animation:fade .4s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .card img{width:100%;display:block;background:var(--panel2);min-height:60px}
+  .card .heart{position:absolute;top:7px;left:7px;background:rgba(0,0,0,.6);
+    color:#ff9bb0;font-size:12px;font-weight:700;padding:2px 8px;border-radius:20px}
+  .card .meta{position:absolute;left:0;right:0;bottom:0;padding:6px 9px;font-size:11px;
+    background:linear-gradient(transparent,rgba(0,0,0,.8));color:#dfe7ee;opacity:0;
+    transition:.2s;display:flex;justify-content:space-between;gap:6px}
+  .card:hover .meta{opacity:1}
+  .card .meta a{color:var(--accent);text-decoration:none}
+  .empty{color:var(--muted);text-align:center;padding:60px 20px;font-size:15px}
+
+  #swipeWrap{display:flex;flex-direction:column;align-items:center;gap:18px;padding-top:6px}
+  #deck{position:relative;width:min(92vw,380px);height:min(74vh,560px)}
+  .swcard{position:absolute;inset:0;border-radius:16px;overflow:hidden;background:#000;
+    border:1px solid var(--line);box-shadow:0 10px 30px rgba(0,0,0,.5);
+    display:flex;align-items:center;justify-content:center;touch-action:none;user-select:none}
+  .swcard img{max-width:100%;max-height:100%;object-fit:contain;pointer-events:none}
+  .swcard .cap{position:absolute;left:0;right:0;bottom:0;padding:10px 14px;font-size:13px;
+    background:linear-gradient(transparent,rgba(0,0,0,.85));color:#eef3f7;
+    display:flex;justify-content:space-between;gap:8px}
+  .swcard .cap a{color:var(--accent);text-decoration:none}
+  .stamp{position:absolute;top:24px;font-size:34px;font-weight:800;letter-spacing:2px;
+    padding:6px 16px;border:4px solid;border-radius:12px;opacity:0;transform:rotate(-18deg)}
+  .stamp.like{left:18px;color:var(--like);border-color:var(--like)}
+  .stamp.nope{right:18px;color:var(--nope);border-color:var(--nope)}
+  .swbtns{display:flex;gap:26px;align-items:center}
+  .swbtns .b{width:62px;height:62px;border-radius:50%;display:flex;align-items:center;
+    justify-content:center;font-size:28px;cursor:pointer;border:2px solid var(--line);
+    background:var(--panel);transition:.15s}
+  .swbtns .b:hover{transform:scale(1.08)}
+  .b.nope{color:var(--nope)} .b.like{color:var(--like)}
+  .swcount{color:var(--muted);font-size:13px}
+  .deck-done{color:var(--muted);text-align:center;padding:40px 10px}
+
+  #lb{position:fixed;inset:0;background:rgba(0,0,0,.93);z-index:100;display:none;
+    align-items:center;justify-content:center}
+  #lb.open{display:flex}
+  #lb img{max-width:94vw;max-height:90vh;border-radius:6px}
+  #lb .nav{position:absolute;top:50%;transform:translateY(-50%);font-size:42px;
+    color:#fff;cursor:pointer;padding:0 18px;user-select:none;opacity:.7}
+  #lb .nav:hover{opacity:1}
+  #lb #prev{left:0}#lb #next{right:0}
+  #lb #close{position:absolute;top:14px;right:20px;font-size:30px;color:#fff;cursor:pointer;opacity:.8}
+  #lb .info{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);
+    color:#cfd8e0;font-size:13px;background:rgba(0,0,0,.5);padding:5px 14px;border-radius:20px}
+  #lb .info a{color:var(--accent);text-decoration:none}
+</style>
+</head>
+<body>
+<header>
+  <h1>VOZ <span>Gallery + Swipe</span></h1>
+
+  <div class="controls">
+    <div class="field" style="flex:1">
+      <label>Link thread (quét mới)</label>
+      <input id="url" placeholder="https://voz.vn/t/.../page-693  (dán link trang nào cũng được)">
+    </div>
+    <div class="field"><label>Từ trang</label><input id="start" type="number" min="1" placeholder="1"></div>
+    <div class="field"><label>Đến trang</label><input id="end" type="number" min="1" placeholder="cuối"></div>
+    <button id="go">Quét</button>
+  </div>
+
+  <div class="row2">
+    <div class="field" style="flex:1">
+      <label>Thread đã lưu (mở lại tức thì)</label>
+      <select id="saved"><option value="">— chưa có —</option></select>
+    </div>
+    <button id="update" class="ghost" title="Chỉ quét các trang mới của thread đang chọn">↻ Cập nhật trang mới</button>
+  </div>
+
+  <div class="hint">Quét 1 lần là <b>lưu vào máy</b>; lần sau chọn ở "Thread đã lưu" để xem ngay, không quét lại.
+    Khi thread có trang mới thì bấm <b>Cập nhật trang mới</b>. Chỉ lấy ảnh lớn (bỏ avatar/icon/logo/GIF/meme trong quote).
+    Quẹt phải = ♥, quẹt trái = bỏ; ảnh nhiều tim lên đầu.</div>
+  <div class="status" id="status"></div>
+  <div class="tabs">
+    <div class="tab on" data-v="gallery">🖼️ Gallery</div>
+    <div class="tab" data-v="swipe">🔥 Quẹt</div>
+  </div>
+</header>
+
+<main>
+  <div class="view on" id="view-gallery">
+    <div id="gallery"></div>
+    <div class="empty" id="empty">Dán link thread voz rồi bấm <b>Quét</b>, hoặc chọn một thread đã lưu.</div>
+  </div>
+
+  <div class="view" id="view-swipe">
+    <div id="swipeWrap">
+      <div id="deck"></div>
+      <div class="swbtns">
+        <div class="b nope" id="bnope" title="Bỏ (←)">✕</div>
+        <div class="swcount" id="swcount"></div>
+        <div class="b like" id="blike" title="Thích (→)">♥</div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div id="lb">
+  <span id="close">&times;</span>
+  <span class="nav" id="prev">&#10094;</span>
+  <img id="lbimg" src="">
+  <span class="nav" id="next">&#10095;</span>
+  <div class="info" id="lbinfo"></div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const gallery = $('#gallery'), statusEl = $('#status'), emptyEl = $('#empty');
+let images = [], poll = null, lbIndex = 0, threadBase = '';
+let scores = {};
+let deck = [], deckPtr = 0;
+
+const proxy = u => '/img?u=' + encodeURIComponent(u);
+const srcThumb = u => u;   // tai thang trong browser (voz/imgur deu load duoc, khong nghen proxy)
+const srcFull  = u => u;
+const sc = u => scores[u] || {likes:0, dislikes:0, score:0};
+function setStatus(html){ statusEl.innerHTML = html; }
+
+/* ---------- tabs ---------- */
+document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('on'));
+  t.classList.add('on');
+  const v = t.dataset.v;
+  $('#view-gallery').classList.toggle('on', v === 'gallery');
+  $('#view-swipe').classList.toggle('on', v === 'swipe');
+  if (v === 'gallery') renderGallery();
+  if (v === 'swipe' && !deck.length) buildDeck();
+});
+
+/* ---------- danh sách thread đã lưu ---------- */
+async function loadThreads(autoOpen){
+  let list = [];
+  try{ list = await (await fetch('/api/threads')).json(); }catch(e){ return; }
+  const sel = $('#saved');
+  sel.innerHTML = '<option value="">— chọn thread đã lưu —</option>';
+  for(const t of list){
+    const o = document.createElement('option');
+    o.value = t.thread;
+    const name = t.title || t.thread;
+    o.textContent = name + '  ·  ' + t.count + ' ảnh' + (t.total_pages?(' / '+t.total_pages+' trang'):'');
+    sel.append(o);
+  }
+  if(autoOpen && list.length){ sel.value = list[0].thread; loadGallery(list[0].thread); }
+}
+
+async function loadGallery(thread){
+  if(!thread) return;
+  threadBase = thread;
+  setStatus('Đang mở thư viện đã lưu…');
+  let data;
+  try{ data = await (await fetch('/api/gallery?thread='+encodeURIComponent(thread))).json(); }
+  catch(e){ setStatus('<span class="err">Không mở được thư viện.</span>'); return; }
+  images = data.images || [];
+  scores = {};
+  for(const im of images) scores[im.url] = {likes:im.likes||0, dislikes:im.dislikes||0, score:im.score||0};
+  const title = (data.meta && data.meta.title) ? data.meta.title : thread;
+  setStatus('<span class="pill">'+images.length+' ảnh</span><span>'+title+'</span>'+
+    (data.meta&&data.meta.total_pages?('<span class="pill">'+data.meta.total_pages+' trang</span>'):''));
+  deck = []; deckPtr = 0;
+  renderGallery();
+  if($('#view-swipe').classList.contains('on')) buildDeck();
+  if(!images.length){ emptyEl.style.display='block'; emptyEl.textContent='Thread này chưa có ảnh đã lưu. Bấm Cập nhật / Quét.'; }
+}
+$('#saved').addEventListener('change', e=>{ if(e.target.value){ $('#url').value=e.target.value; loadGallery(e.target.value); } });
+
+/* ---------- quét (mới / cập nhật) ---------- */
+async function runScrape(mode){
+  const url = $('#url').value.trim();
+  if(!url){ alert('Dán link thread trước đã.'); return; }
+  const body = {url, mode};
+  if(mode !== 'update'){
+    body.start = $('#start').value ? parseInt($('#start').value) : null;
+    body.end = $('#end').value ? parseInt($('#end').value) : null;
+  }
+  $('#go').disabled = true; $('#update').disabled = true;
+  setStatus(mode==='update' ? 'Đang tìm trang mới…' : 'Đang khởi tạo…');
+  let job;
+  try{
+    const r = await fetch('/api/scrape',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(body)});
+    job = (await r.json()).job_id;
+  }catch(e){ setStatus('<span class="err">Lỗi kết nối server.</span>'); $('#go').disabled=false; $('#update').disabled=false; return; }
+  if(poll) clearInterval(poll);
+  poll = setInterval(()=>tick(job), 1200); tick(job);
+}
+
+async function tick(job){
+  let d; try{ d = await (await fetch('/api/job/'+job)).json(); }catch(e){ return; }
+  if(d.error){ setStatus('<span class="err">'+d.error+'</span>'); }
+  threadBase = d.thread_base || threadBase;
+  // KHONG render gallery trong luc quet (tranh tai thumbnail giành bang thong) - chi hien tien trinh
+  const pct = d.total_pages ? Math.round(d.done_pages/d.total_pages*100) : 0;
+  const done = d.status === 'done';
+  setStatus('<span class="pill">'+d.count+' ảnh</span>'+
+    '<span>Trang '+d.done_pages+'/'+(d.total_pages||'?')+
+      (d.thread_total_pages?(' · thread '+d.thread_total_pages+' trang'):'')+'</span>'+
+    '<div class="bar"><i style="width:'+pct+'%"></i></div>'+(done?'<span class="pill">✓ Xong</span>':''));
+  if(done){
+    clearInterval(poll); $('#go').disabled=false; $('#update').disabled=false;
+    await loadGallery(threadBase);   // nạp lại từ DB (gồm ảnh cũ + điểm)
+    await loadThreads(false);        // làm mới danh sách thread
+    $('#saved').value = threadBase;
+  }
+}
+
+/* ---------- gallery (xếp theo tim) ---------- */
+let galleryList = [], galleryShown = 0, galleryObs = null;
+const BATCH = 40;
+function buildCard(im, idx){
+  const card = document.createElement('div'); card.className='card';
+  card.onclick = ()=>openLb(idx);
+  const img = document.createElement('img');
+  img.loading='lazy'; img.decoding='async'; img.referrerPolicy='no-referrer'; img.src=srcThumb(im.url);
+  img.onerror=()=>card.remove();         // loi that su -> bo the
+  if(im.w&&im.h) img.style.aspectRatio=im.w+'/'+im.h;
+  const likes = sc(im.url).likes;
+  if(likes>0){ const h=document.createElement('div'); h.className='heart'; h.textContent='♥ '+likes; card.append(h); }
+  const meta=document.createElement('div'); meta.className='meta';
+  const who=document.createElement('span'); who.textContent=im.author||'';
+  const lnk=document.createElement('span');
+  if(im.post) lnk.innerHTML='<a href="'+im.post+'" target="_blank" onclick="event.stopPropagation()">post ↗</a>';
+  meta.append(who,lnk); card.append(img,meta);
+  return card;
+}
+function updateSentinel(){
+  let sent = document.getElementById('sentinel');
+  if(galleryShown < galleryList.length){
+    if(!sent){ sent=document.createElement('div'); sent.id='sentinel'; sent.style.height='1px'; sent.style.width='100%'; }
+    gallery.append(sent);            // dua sentinel xuong cuoi
+    if(galleryObs) galleryObs.observe(sent);
+  } else if(sent){ sent.remove(); }
+}
+function appendBatch(){
+  const frag = document.createDocumentFragment();
+  const end = Math.min(galleryShown+BATCH, galleryList.length);
+  for(let i=galleryShown;i<end;i++){ const o=galleryList[i]; frag.append(buildCard(o.im,o.idx)); }
+  galleryShown = end;
+  gallery.append(frag);
+  updateSentinel();
+}
+function renderGallery(){
+  if(!images.length){ gallery.innerHTML=''; return; }
+  emptyEl.style.display='none';
+  galleryList = images.map((im,idx)=>({im,idx}))
+    .filter(o => sc(o.im.url).score >= 0)   // an anh da bi che (quet trai)
+    .sort((a,b)=> sc(b.im.url).score - sc(a.im.url).score
+      || sc(b.im.url).likes - sc(a.im.url).likes || a.idx - b.idx);
+  galleryShown = 0; gallery.innerHTML = '';
+  if(!galleryObs){
+    galleryObs = new IntersectionObserver(es=>{
+      for(const e of es){ if(e.isIntersecting){ galleryObs.unobserve(e.target); appendBatch(); } }
+    }, {rootMargin:'700px'});
+  }
+  appendBatch();
+}
+
+/* ---------- swipe ---------- */
+function buildDeck(){
+  const wrap = $('#deck');
+  if(!images.length){ wrap.innerHTML='<div class="deck-done">Chưa có ảnh. Hãy quét hoặc mở một thread.</div>'; updCount(); return; }
+  deck = images.map((_,i)=>i).filter(i => sc(images[i].url).score >= 0);  // bo anh da quet trai
+  for(let i=deck.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [deck[i],deck[j]]=[deck[j],deck[i]]; }
+  deckPtr = 0; renderDeck();
+}
+function renderDeck(){
+  const wrap = $('#deck'); wrap.innerHTML='';
+  if(deckPtr >= deck.length){
+    wrap.innerHTML='<div class="deck-done">Hết ảnh để quẹt 🎉<br>Mở tab Gallery để xem xếp hạng theo tim.</div>';
+    updCount(); return;
+  }
+  for(let k=Math.min(deckPtr+1, deck.length-1); k>=deckPtr; k--){
+    const im = images[deck[k]];
+    const c = document.createElement('div'); c.className='swcard';
+    if(k>deckPtr){ c.style.transform='scale(.96) translateY(10px)'; c.style.filter='brightness(.7)'; }
+    const img = document.createElement('img'); img.referrerPolicy='no-referrer'; img.src=srcFull(im.url); c.append(img);
+    const cap=document.createElement('div'); cap.className='cap';
+    const who=document.createElement('span'); who.textContent='@'+(im.author||'?')+'  ·  ♥ '+sc(im.url).likes;
+    const lnk=document.createElement('span');
+    if(im.post) lnk.innerHTML='<a href="'+im.post+'" target="_blank">post ↗</a>';
+    cap.append(who,lnk); c.append(cap);
+    const sl=document.createElement('div'); sl.className='stamp like'; sl.textContent='LIKE';
+    const sn=document.createElement('div'); sn.className='stamp nope'; sn.textContent='NOPE';
+    c.append(sl,sn);
+    if(k===deckPtr) attachDrag(c, sl, sn);
+    wrap.append(c);
+  }
+  updCount();
+}
+function updCount(){ $('#swcount').textContent = deck.length ? (Math.min(deckPtr,deck.length))+' / '+deck.length : ''; }
+
+function attachDrag(card, sl, sn){
+  let sx=0, dx=0, dragging=false;
+  const down = e=>{ dragging=true; sx=e.clientX; card.style.transition='none'; card.setPointerCapture&&card.setPointerCapture(e.pointerId); };
+  const move = e=>{ if(!dragging) return; dx=e.clientX-sx;
+    card.style.transform='translate('+dx+'px,0) rotate('+(dx/18)+'deg)';
+    sl.style.opacity = dx>0 ? Math.min(dx/120,1) : 0;
+    sn.style.opacity = dx<0 ? Math.min(-dx/120,1) : 0; };
+  const up = ()=>{ if(!dragging) return; dragging=false;
+    if(dx>120){ fly(card,1); decide('like'); }
+    else if(dx<-120){ fly(card,-1); decide('dislike'); }
+    else{ card.style.transition='transform .25s'; card.style.transform=''; sl.style.opacity=0; sn.style.opacity=0; } };
+  card.addEventListener('pointerdown',down);
+  card.addEventListener('pointermove',move);
+  card.addEventListener('pointerup',up);
+  card.addEventListener('pointercancel',up);
+}
+function fly(card,dir){
+  card.style.transition='transform .35s ease, opacity .35s';
+  card.style.transform='translate('+(dir*window.innerWidth)+'px,40px) rotate('+(dir*22)+'deg)';
+  card.style.opacity='0';
+}
+function decide(dir){
+  const im = images[deck[deckPtr]];
+  if(!im) return;
+  const s = sc(im.url);
+  if(dir==='like') s.likes++; else s.dislikes++; s.score=s.likes-s.dislikes;
+  scores[im.url]=s;
+  fetch('/api/vote',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({url:im.url, dir, thread:threadBase, author:im.author, post:im.post, w:im.w, h:im.h})}).catch(()=>{});
+  deckPtr++; setTimeout(renderDeck, 340);
+}
+$('#blike').onclick = ()=>{ const c=$('#deck').querySelector('.swcard'); if(!c||deckPtr>=deck.length) return; fly(c,1); decide('like'); };
+$('#bnope').onclick = ()=>{ const c=$('#deck').querySelector('.swcard'); if(!c||deckPtr>=deck.length) return; fly(c,-1); decide('dislike'); };
+document.addEventListener('keydown', e=>{
+  if(!$('#view-swipe').classList.contains('on')) return;
+  if(e.key==='ArrowRight') $('#blike').onclick();
+  if(e.key==='ArrowLeft') $('#bnope').onclick();
+});
+
+/* ---------- lightbox ---------- */
+const lb=$('#lb'), lbimg=$('#lbimg'), lbinfo=$('#lbinfo');
+let galleryOrder = [];
+function openLb(idx){
+  galleryOrder = images.map((im,i)=>({im,i}))
+    .filter(o => sc(o.im.url).score >= 0)
+    .sort((a,b)=> sc(b.im.url).score - sc(a.im.url).score
+      || sc(b.im.url).likes - sc(a.im.url).likes || a.i - b.i).map(o=>o.i);
+  lbIndex = galleryOrder.indexOf(idx); if(lbIndex<0) lbIndex=0;
+  showLb();
+}
+function showLb(){
+  const im = images[galleryOrder[lbIndex]];
+  lbimg.referrerPolicy='no-referrer'; lbimg.src = im.url;
+  lbinfo.innerHTML = (im.author?('@'+im.author+' · '):'')+'♥ '+sc(im.url).likes+' · '+
+    '<a href="'+im.url+'" target="_blank">ảnh gốc ↗</a>'+
+    (im.post?(' · <a href="'+im.post+'" target="_blank">post ↗</a>'):'');
+  lb.classList.add('open');
+}
+function moveLb(d){ lbIndex=(lbIndex+d+galleryOrder.length)%galleryOrder.length; showLb(); }
+$('#close').onclick=()=>lb.classList.remove('open');
+$('#next').onclick=()=>moveLb(1);
+$('#prev').onclick=()=>moveLb(-1);
+lb.onclick=e=>{ if(e.target===lb) lb.classList.remove('open'); };
+document.addEventListener('keydown', e=>{
+  if(!lb.classList.contains('open')) return;
+  if(e.key==='Escape') lb.classList.remove('open');
+  if(e.key==='ArrowRight') moveLb(1);
+  if(e.key==='ArrowLeft') moveLb(-1);
+});
+
+$('#go').onclick = ()=>runScrape('new');
+$('#update').onclick = ()=>runScrape('update');
+$('#url').addEventListener('keydown', e=>{ if(e.key==='Enter') runScrape('new'); });
+
+/* che do cong khai: an phan quet/them link */
+async function applyConfig(){
+  try{
+    const cfg = await (await fetch('/api/config')).json();
+    if(cfg.public){
+      document.querySelector('.controls').style.display='none';   // an link + tu/den trang + nut Quet
+      $('#update').style.display='none';                          // an nut Cap nhat
+      document.querySelector('.hint').textContent='Quẹt phải = ♥ thích, quẹt trái = bỏ. Ảnh nhiều tim lên đầu Gallery.';
+    }
+  }catch(e){}
+}
+
+/* khoi tao */
+applyConfig();
+loadThreads(true);
+</script>
+</body>
+</html>
