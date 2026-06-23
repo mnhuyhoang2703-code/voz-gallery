@@ -97,6 +97,19 @@
   #lb .info{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);
     color:#cfd8e0;font-size:13px;background:rgba(0,0,0,.5);padding:5px 14px;border-radius:20px}
   #lb .info a{color:var(--accent);text-decoration:none}
+
+  /* ---- Mobile: thu gon header de khung quet khong bi che ---- */
+  @media (max-width: 640px){
+    header{padding:8px 12px}
+    h1{font-size:15px;margin:0 0 6px}
+    .hint{display:none}
+    .status{display:none}
+    .field label{font-size:10px}
+    #deck{width:94vw;height:min(62dvh,620px)}
+    #swipeWrap{padding-top:4px;gap:10px}
+    .swbtns .b{width:54px;height:54px;font-size:24px}
+    #gallery{column-width:150px;column-gap:8px}
+  }
 </style>
 </head>
 <body>
