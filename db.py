@@ -79,11 +79,12 @@ def init():
             total_pages INTEGER,
             updated     {real}
         )""")
-        # them cot page neu DB cu chua co
-        try:
-            c.execute("ALTER TABLE images ADD COLUMN page INTEGER")
-        except Exception:
-            pass
+    # them cot page neu DB cu thieu (transaction RIENG: PG se rollback ca block neu loi)
+    try:
+        with _Cur() as c2:
+            c2.execute("ALTER TABLE images ADD COLUMN page INTEGER")
+    except Exception:
+        pass
 
 
 # ---------- ghi ảnh đã quét ----------

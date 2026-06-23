@@ -90,12 +90,14 @@ async def _startup():
         except Exception as ex:
             print("[cleanup] loi:", ex)
     if PUBLIC_MODE and os.path.exists(SEED_PATH):
-        try:
-            if db.count_images() == 0:
-                n, t = db.import_seed(SEED_PATH)
-                print(f"[seed] nap {n} anh, {t} thread tu seed.json")
-        except Exception as ex:
-            print("[seed] loi nap seed:", ex)
+        async def _seed():
+            try:
+                if await asyncio.to_thread(db.count_images) == 0:
+                    n, t = await asyncio.to_thread(db.import_seed, SEED_PATH)
+                    print(f"[seed] nap {n} anh, {t} thread tu seed.json")
+            except Exception as ex:
+                print("[seed] loi nap seed:", ex)
+        asyncio.create_task(_seed())  # chay nen, khong chan startup/healthcheck
 
 
 @app.get("/api/config")
